@@ -12,6 +12,7 @@ quick-board es una app local de escritorio, pensada para productividad diaria en
 - [Herramientas utilizadas](#herramientas-utilizadas)
 - [Alcance del MVP](#alcance-del-mvp)
 - [Cómo usarla](#cómo-usarla)
+- [Crear ejecutable para Windows](#crear-ejecutable-para-windows)
 - [Estructura del proyecto](#estructura-del-proyecto)
 - [Limitaciones](#limitaciones)
 - [Consejos de seguridad](#consejos-de-seguridad)
@@ -34,7 +35,7 @@ Desde ese panel podés guardar hasta 10 tarjetas con contenido útil para copiar
 
 Cada tarjeta permite copiar su contenido al portapapeles, editarla o borrarla.
 
-La app guarda la información localmente en archivos JSON, por lo que las tarjetas se mantienen al cerrar y volver a abrir el programa.
+La app guarda la información localmente en archivos JSON, por lo que las tarjetas y la configuración se mantienen al cerrar y volver a abrir el programa.
 
 ---
 
@@ -47,12 +48,13 @@ La app guarda la información localmente en archivos JSON, por lo que las tarjet
 | `Qt Clipboard API` | Copiado de texto al portapapeles |
 | `JSON` | Persistencia local de tarjetas y configuración |
 | `ctypes` | Lectura del atajo global en Windows |
-| `PowerShell` | Comandos de setup y ejecución |
+| `PyInstaller` | Generación del ejecutable `.exe` |
+| `PowerShell` | Script de build para Windows |
 | `Git` | Control de versiones |
 
 Etiquetas del proyecto:
 
-`Python` · `PySide6` · `Desktop App` · `Windows` · `Clipboard` · `JSON` · `Productivity`
+`Python` · `PySide6` · `Desktop App` · `Windows` · `Clipboard` · `JSON` · `PyInstaller` · `Productivity`
 
 ---
 
@@ -71,6 +73,7 @@ Esta versión incluye:
 - Selector de color de fondo.
 - Fondo tipo madera por defecto.
 - Botón para cerrar definitivamente la app.
+- Scripts simples para generar un ejecutable de Windows.
 
 El objetivo del MVP es ser simple, útil y fácil de mantener.
 
@@ -120,6 +123,58 @@ Podés:
 
 ---
 
+## Crear ejecutable para Windows
+
+El proyecto incluye scripts para generar un ejecutable `.exe` de forma simple.
+
+### Opción simple
+
+Hacé doble click en:
+
+```text
+build_exe.bat
+```
+
+El script se encarga de ejecutar el build usando PowerShell.
+
+### Opción desde PowerShell
+
+También podés abrir PowerShell en la carpeta del proyecto y ejecutar:
+
+```powershell
+.\build_exe.ps1
+```
+
+El ejecutable se generará en:
+
+```text
+dist\quick-board.exe
+```
+
+### Si PowerShell bloquea el script
+
+En algunos equipos, PowerShell puede bloquear la ejecución de scripts. En ese caso, ejecutá:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\build_exe.ps1
+```
+
+Este permiso aplica solo a la sesión actual de PowerShell.
+
+### Qué hace el script de build
+
+El script:
+
+- verifica que estés en la raíz del proyecto
+- crea el entorno virtual si no existe
+- instala las dependencias de `requirements.txt`
+- limpia builds anteriores
+- genera el ejecutable con PyInstaller
+- deja el archivo final en `dist\quick-board.exe`
+
+---
+
 ## Estructura del proyecto
 
 ```text
@@ -129,6 +184,8 @@ quick-board/
 ├── requirements.txt
 ├── README.md
 ├── .gitignore
+├── build_exe.ps1
+├── build_exe.bat
 │
 ├── data/
 │   ├── slots.json
@@ -155,10 +212,10 @@ Esta versión no incluye:
 - múltiples tableros
 - búsqueda interna
 - reordenamiento de tarjetas
-- empaquetado automático como `.exe`
+- instalador formal para Windows
 - inicio automático con Windows
 
-Estas decisiones mantienen el MVP simple y posible de terminar rápido.
+Estas decisiones mantienen el MVP simple y posible de mantener.
 
 ---
 
@@ -176,6 +233,7 @@ Recomendaciones:
 - No guardes claves de API privadas.
 - No compartas tu carpeta `data/` si contiene información personal.
 - Revisá el contenido de `data/slots.json` antes de subir el proyecto a un repositorio público.
+- Si distribuís el `.exe`, probalo primero en una carpeta limpia para confirmar que crea y guarda los datos correctamente.
 
 ---
 
@@ -183,7 +241,8 @@ Recomendaciones:
 
 Ideas posibles para próximas versiones:
 
-- Empaquetar como `.exe` con PyInstaller.
+- Agregar instalador para Windows.
+- Guardar los datos en `%APPDATA%\quick-board`.
 - Agregar inicio automático con Windows.
 - Permitir reordenar tarjetas.
 - Agregar buscador rápido.
@@ -191,7 +250,7 @@ Ideas posibles para próximas versiones:
 - Permitir importar y exportar tarjetas.
 - Agregar backup local.
 - Agregar soporte opcional de cifrado.
-- Crear instalador para Windows.
+- Agregar icono personalizado para el `.exe`.
 
 ---
 
