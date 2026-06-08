@@ -101,7 +101,7 @@ TRANSLATIONS = {
         "limit_message": "Solo podés guardar hasta {max_slots} tarjetas.",
         "delete_title": "Borrar tarjeta",
         "delete_message": "¿Seguro que querés borrar esta tarjeta?",
-        "copy_tooltip": "Copiar contenido",
+        "copy_tooltip": "Copiar",
         "edit_tooltip": "Editar tarjeta",
         "delete_tooltip": "Borrar tarjeta",
         "quit_title": "Cerrar quick-board",
@@ -618,7 +618,7 @@ class QuickBoardWindow(QMainWindow):
             )
             self.board_layout.addWidget(add_button)
 
-        def create_slot_card(self, index: int, slot: dict[str, Any]) -> QFrame:
+    def create_slot_card(self, index: int, slot: dict[str, Any]) -> QFrame:
             card = QFrame()
             card.setObjectName("slotCard")
             card.setStyleSheet(
@@ -715,7 +715,7 @@ class QuickBoardWindow(QMainWindow):
             copy_button.setStyleSheet(
                 """
                 QPushButton {
-                    background-color: #111827;
+                    background-color: #16A34A;
                     color: #FFFFFF;
                     border: none;
                     border-radius: 10px;
@@ -733,18 +733,18 @@ class QuickBoardWindow(QMainWindow):
             copy_row.addStretch()
 
             content_layout.addWidget(content)
-            content_layout.addLayout(copy_row)
 
             content_box.setLayout(content_layout)
 
             layout.addLayout(title_row)
             layout.addWidget(content_box)
+            layout.addLayout(copy_row)
 
             card.setLayout(layout)
 
             return card
 
-        def create_icon_button(
+    def create_icon_button(
             self,
             text: str,
             tooltip: str,
