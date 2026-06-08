@@ -1,12 +1,23 @@
 import json
+import os
 from pathlib import Path
 from typing import Any
 
 
 MAX_SLOTS = 10
+APP_NAME = "quick-board"
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / "data"
+
+def get_app_data_dir() -> Path:
+    appdata_path = os.getenv("APPDATA")
+
+    if appdata_path:
+        return Path(appdata_path) / APP_NAME
+
+    return Path.home() / f".{APP_NAME}"
+
+
+DATA_DIR = get_app_data_dir()
 SLOTS_FILE = DATA_DIR / "slots.json"
 
 
