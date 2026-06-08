@@ -1,9 +1,9 @@
 from functools import partial
 from typing import Any
 
-from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QColor
+from PySide6.QtCore import QObject, QEvent, Qt, Signal, QTimer
 from PySide6.QtWidgets import (
+    QApplication,
     QDialog,
     QFrame,
     QHBoxLayout,
@@ -35,6 +35,10 @@ CARD_COLORS = [
     "#CFFAFE",
     "#E9D5FF",
 ]
+
+
+class HotkeySignals(QObject):
+    toggle_requested = Signal()
 
 
 class SlotDialog(QDialog):
@@ -75,6 +79,7 @@ class SlotDialog(QDialog):
 
         for color in CARD_COLORS:
             button = QPushButton()
+            button.setFocusPolicy(Qt.NoFocus)
             button.setFixedSize(28, 28)
             button.setCursor(Qt.PointingHandCursor)
             button.setStyleSheet(
@@ -97,9 +102,11 @@ class SlotDialog(QDialog):
         actions_layout.addStretch()
 
         cancel_button = QPushButton("Cancel")
+        cancel_button.setFocusPolicy(Qt.NoFocus)
         cancel_button.clicked.connect(self.reject)
 
         save_button = QPushButton("Save")
+        save_button.setFocusPolicy(Qt.NoFocus)
         save_button.clicked.connect(self.validate_and_accept)
         save_button.setDefault(True)
 
@@ -157,22 +164,26 @@ class QuickBoardWindow(QMainWindow):
         )
 
         self.screen_geometry = self.screen().availableGeometry()
-        self.panel_width = max(320, self.screen_geometry.width() // 4)
+        self.panel_width = max(360, self.screen_geometry.width() // 4)
         self.panel_height = self.screen_geometry.height()
 
         self.visible_x = self.screen_geometry.right() - self.panel_width + 1
-        self.hidden_tab_width = 34
+        self.hidden_tab_width = 42
         self.hidden_x = self.screen_geometry.right() - self.hidden_tab_width + 1
         self.panel_y = self.screen_geometry.top()
 
         self.resize(self.panel_width, self.panel_height)
+
+        self.hotkey_signals = HotkeySignals()
+        self.hotkey_signals.toggle_requested.connect(self.toggle_panel)
 
         self.root_widget = QWidget()
         self.root_layout = QHBoxLayout()
         self.root_layout.setContentsMargins(0, 0, 0, 0)
         self.root_layout.setSpacing(0)
 
-        self.tab_button = QPushButton("‹")
+        self.tab_button = QPushButton("QB")
+        self.tab_button.setFocusPolicy(Qt.NoFocus)
         self.tab_button.setFixedWidth(self.hidden_tab_width)
         self.tab_button.setCursor(Qt.PointingHandCursor)
         self.tab_button.clicked.connect(self.toggle_panel)
@@ -182,7 +193,7 @@ class QuickBoardWindow(QMainWindow):
                 background-color: #111827;
                 color: white;
                 border: none;
-                font-size: 24px;
+                font-size: 12px;
                 font-weight: bold;
             }
             QPushButton:hover {
@@ -214,10 +225,39 @@ class QuickBoardWindow(QMainWindow):
         self.root_widget.setLayout(self.root_layout)
         self.setCentralWidget(self.root_widget)
 
-        self.hotkey_manager = GlobalHotkeyManager(self.toggle_panel)
+        app = QApplication.instance()
+
+        if app:
+            app.installEventFilter(self)
+
+        self.hotkey_manager = GlobalHotkeyManager(self.request_toggle_from_hotkey)
         self.register_hotkey_safely()
 
         self.render_board()
+
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        if event.type() in {QEvent.KeyPress, QEvent.KeyRelease}:
+            if self.is_internal_hotkey_event(event):
+                return True
+
+        return super().eventFilter(watched, event)
+
+    def is_internal_hotkey_event(self, event: QEvent) -> bool:
+        key = event.key()
+        modifiers = event.modifiers()
+
+        is_space = key == Qt.Key_Space
+        has_ctrl = bool(modifiers & Qt.ControlModifier)
+        has_shift = bool(modifiers & Qt.ShiftModifier)
+        has_alt = bool(modifiers & Qt.AltModifier)
+
+        is_ctrl_shift_space = is_space and has_ctrl and has_shift
+        is_ctrl_alt_space = is_space and has_ctrl and has_alt
+
+        return is_ctrl_shift_space or is_ctrl_alt_space
+
+    def request_toggle_from_hotkey(self) -> None:
+        self.hotkey_signals.toggle_requested.emit()
 
     def register_hotkey_safely(self) -> None:
         try:
@@ -233,25 +273,29 @@ class QuickBoardWindow(QMainWindow):
             )
 
     def show_hidden(self) -> None:
+        self.resize(self.panel_width, self.panel_height)
         self.move(self.hidden_x, self.panel_y)
-        self.show()
-        self.is_panel_visible = False
         self.board_widget.hide()
-        self.tab_button.setText("‹")
+        self.tab_button.setText("QB")
+        self.is_panel_visible = False
+        self.show()
 
     def show_panel(self) -> None:
+        self.resize(self.panel_width, self.panel_height)
         self.move(self.visible_x, self.panel_y)
         self.board_widget.show()
-        self.tab_button.setText("›")
+        self.tab_button.setText("×")
         self.is_panel_visible = True
+        self.show()
         self.raise_()
-        self.activateWindow()
 
     def hide_panel(self) -> None:
+        self.resize(self.panel_width, self.panel_height)
         self.move(self.hidden_x, self.panel_y)
         self.board_widget.hide()
-        self.tab_button.setText("‹")
+        self.tab_button.setText("QB")
         self.is_panel_visible = False
+        self.show()
 
     def toggle_panel(self) -> None:
         if self.is_panel_visible:
@@ -286,6 +330,24 @@ class QuickBoardWindow(QMainWindow):
         self.board_layout.addWidget(header)
         self.board_layout.addWidget(subtitle)
 
+        if not self.slots:
+            empty_state = QLabel(
+                "No cards yet.\n\nClick the button below to add your first quick note."
+            )
+            empty_state.setAlignment(Qt.AlignCenter)
+            empty_state.setStyleSheet(
+                """
+                QLabel {
+                    color: #6B7280;
+                    background-color: #FFFFFF;
+                    border: 1px dashed #D1D5DB;
+                    border-radius: 12px;
+                    padding: 24px;
+                }
+                """
+            )
+            self.board_layout.addWidget(empty_state)
+
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setFrameShape(QFrame.NoFrame)
@@ -307,6 +369,7 @@ class QuickBoardWindow(QMainWindow):
 
         if len(self.slots) < MAX_SLOTS:
             add_button = QPushButton("+ Add new card")
+            add_button.setFocusPolicy(Qt.NoFocus)
             add_button.setCursor(Qt.PointingHandCursor)
             add_button.clicked.connect(self.add_slot)
             add_button.setStyleSheet(
@@ -371,12 +434,15 @@ class QuickBoardWindow(QMainWindow):
         actions_layout.setSpacing(6)
 
         copy_button = QPushButton("Copy")
+        copy_button.setFocusPolicy(Qt.NoFocus)
         copy_button.clicked.connect(partial(self.copy_slot_content, index))
 
         edit_button = QPushButton("Edit")
+        edit_button.setFocusPolicy(Qt.NoFocus)
         edit_button.clicked.connect(partial(self.edit_slot, index))
 
         delete_button = QPushButton("Delete")
+        delete_button.setFocusPolicy(Qt.NoFocus)
         delete_button.clicked.connect(partial(self.delete_slot, index))
 
         for button in [copy_button, edit_button, delete_button]:
@@ -458,12 +524,17 @@ class QuickBoardWindow(QMainWindow):
         copy_to_clipboard(self.slots[index].get("content", ""))
 
     def closeEvent(self, event) -> None:
+        app = QApplication.instance()
+
+        if app:
+            app.removeEventFilter(self)
+
         try:
             self.hotkey_manager.unregister()
         finally:
             event.accept()
 
-    def clear_layout(self, layout: QVBoxLayout) -> None:
+    def clear_layout(self, layout) -> None:
         while layout.count():
             item = layout.takeAt(0)
 

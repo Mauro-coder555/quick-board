@@ -9,7 +9,9 @@ def main() -> None:
     app = QApplication(sys.argv)
 
     window = QuickBoardWindow()
-    window.show_hidden()
+
+    # Show the full panel on startup for a safer first MVP experience.
+    window.show_panel()
 
     sys.exit(app.exec())
 

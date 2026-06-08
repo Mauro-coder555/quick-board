@@ -1,1 +1,7 @@
-[]
+[
+  {
+    "title": "prueba",
+    "content": "Mi card de prueba",
+    "color": "#FDE68A"
+  }
+]
